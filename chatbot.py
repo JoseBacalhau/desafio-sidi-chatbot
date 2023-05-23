@@ -160,6 +160,26 @@ def chatbot_flow():
     # Requisição da Confirmação da Vaga
     print("Confirmar aplicação da vaga ? SIM OU NÃO")
     answer = input()
+    if answer.upper() != "SIM" and answer.upper() !="NÃO":
+        print("Você não está escrevendo corretamente! Você tem mais 2 tentativas.")
+        for _ in range(2):
+            answer = input()
+            if answer.upper() != "SIM" and answer.upper() !="NÃO":
+                print("Digite Corretamente. Você tem mais", 1 - _, "tentativa(s).")
+            elif answer.upper() == "NÃO":
+                print("Confirmada sua desistência da vaga.")
+                return
+            else:
+                print("Agora vocÊ digitou corretamente!")
+                break
+        else:
+            print("Você excedeu o número máximo de tentativas. O chatbot será encerrado.")
+            return
+    elif answer.upper() == "NÃO":
+        print("Confirmada sua desistência da vaga.")
+        return
+    else:
+        pass
 
     if validate_answer(answer):
         print("Preencher formulário GUPY")
