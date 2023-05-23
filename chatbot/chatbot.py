@@ -1,6 +1,4 @@
-import pymongo
 import requests
-
 from pymongo import MongoClient
 
 # Função para fazer uma requisição GET ao back-end
@@ -11,6 +9,17 @@ def make_request(url):
 # Função para validar as respostas do usuário
 def validate_answer(answer):
     return answer.lower() == 'sim'
+
+def get_user_input(prompt, options=None, max_attempts=3):
+    for _ in range(max_attempts):
+        user_input = input(prompt)
+        if options is not None and user_input.upper() not in options:
+            print("Digite uma opção válida.")
+            print("Você tem mais", max_attempts - (_ + 1), "tentativa(s).")
+        else:
+            return user_input
+    print("Você excedeu o número máximo de tentativas. O chatbot será encerrado.")
+    return None
 
 def chatbot_flow():
     print("Início")
@@ -44,142 +53,48 @@ def chatbot_flow():
         print("A vaga existe", job_value)
         print("Vamos continuar.")
     
-    # Requisição ao back-end para receber a primeira Pergunta Eliminatória
-    url = "http://localhost:5000/get_job_messages/1"
-    response = make_request(url)
-    EliminationQuestion1 = response['jobmessages']
-    print(f"{EliminationQuestion1}")
-    EliminatoryAnswer1 = input()
-    if EliminatoryAnswer1.upper() != "SIM" and EliminatoryAnswer1.upper() !="NÃO":
-        print("Você não está escrevendo corretamente! Você tem mais 2 tentativas.")
-        for _ in range(2):
-            EliminatoryAnswer1 = input()
-            if EliminatoryAnswer1.upper() != "SIM" and EliminatoryAnswer1.upper() !="NÃO":
-                print("Digite Corretamente. Você tem mais", 1 - _, "tentativa(s).")
-            elif EliminatoryAnswer1.upper() == "NÃO":
-                print("Esse conhecimento é obrigatório para essa vaga. Tente outras vagas disponíveis.")
-                return
-            else:
-                print("Agora vocÊ digitou corretamente!")
-                print("Vamos continuar.")
-                break
-        else:
-            print("Você excedeu o número máximo de tentativas. O chatbot será encerrado.")
+    # Perguntas Eliminatórias
+    elimination_questions = []
+    elimination_answers = []  # List to store elimination question answers
+    for i in range(1, 4):
+        url = f"http://localhost:5000/get_job_messages/{i}"
+        response = make_request(url)
+        elimination_question = response['jobmessages']
+        elimination_questions.append(elimination_question)
+
+        prompt = f"{elimination_question}\n"
+        answer = get_user_input(prompt, options=["SIM", "NÃO"])
+        if answer is None:
             return
-    elif EliminatoryAnswer1.upper() == "NÃO":
-        return
-    else:
-        print("Resposta Registrada!")
+        elif answer.upper() == "NÃO":
+            print("Esse conhecimento é obrigatório para essa vaga. Tente outras vagas disponíveis.")
+            return
+        else:
+            print("Resposta Registrada!")
+            elimination_answers.append(answer.upper())  # Store the answer
     
-    # Requisição ao back-end para receber a Segunda Pergunta Eliminatória
-    url = "http://localhost:5000/get_job_messages/2"
-    response = make_request(url)
-    EliminationQuestion2 = response['jobmessages']
-    print(f"{EliminationQuestion2}")
-    EliminatoryAnswer2 = input()
-    if EliminatoryAnswer2.upper() != "SIM" and EliminatoryAnswer2.upper() !="NÃO":
-        print("Você não está escrevendo corretamente! Você tem mais 2 tentativas.")
-        for _ in range(2):
-            EliminatoryAnswer2 = input()
-            if EliminatoryAnswer2.upper() != "SIM" and EliminatoryAnswer2.upper() !="NÃO":
-                print("Digite Corretamente. Você tem mais", 1 - _, "tentativa(s).")
-            elif EliminatoryAnswer2.upper() == "NÃO":
-                print("Esse conhecimento é obrigatório para essa vaga. Tente outras vagas disponíveis.")
-                return
-            else:
-                print("Agora vocÊ digitou corretamente!")
-                print("Vamos continuar.")
-                break
-        else:
-            print("Você excedeu o número máximo de tentativas. O chatbot será encerrado.")
+    # Perguntas Obrigatórias
+    mandatory_questions = []
+    mandatory_answers = []  # List to store mandatory question answers
+    for i in range(4, 8):
+        url = f"http://localhost:5000/get_job_messages/{i}"
+        response = make_request(url)
+        mandatory_question = response['jobmessages']
+        mandatory_questions.append(mandatory_question)
+
+        prompt = f"{mandatory_question}\n"
+        answer = get_user_input(prompt)
+        if answer is None:
             return
-    elif EliminatoryAnswer2.upper() == "NÃO":
-        return
-    else:
-        print("Resposta Registrada!")
-
-    # Requisição ao back-end para receber a Terceira Pergunta Eliminatória
-    url = "http://localhost:5000/get_job_messages/3"
-    response = make_request(url)
-    EliminationQuestion3 = response['jobmessages']
-    print(f"{EliminationQuestion3}")
-    EliminatoryAnswer3 = input()
-    if EliminatoryAnswer3.upper() != "SIM" and EliminatoryAnswer3.upper() !="NÃO":
-        print("Você não está escrevendo corretamente! Você tem mais 2 tentativas.")
-        for _ in range(2):
-            EliminatoryAnswer3 = input()
-            if EliminatoryAnswer3.upper() != "SIM" and EliminatoryAnswer3.upper() !="NÃO":
-                print("Digite Corretamente. Você tem mais", 1 - _, "tentativa(s).")
-            elif EliminatoryAnswer3.upper() == "NÃO":
-                print("Esse conhecimento é obrigatório para essa vaga. Tente outras vagas disponíveis.")
-                return
-            else:
-                print("Agora vocÊ digitou corretamente!")
-                print("Vamos continuar.")
-                break
         else:
-            print("Você excedeu o número máximo de tentativas. O chatbot será encerrado.")
-            return
-    elif EliminatoryAnswer3.upper() == "NÃO":
+            print("Resposta Registrada!")
+            mandatory_answers.append(answer.upper())  # Store the answer
+
+    # Confirmação da Vaga
+    prompt = "Confirmar aplicação da vaga? (SIM ou NÃO)\n"
+    answer = get_user_input(prompt, options=["SIM", "NÃO"])
+    if answer is None:
         return
-    else:
-        print("Resposta Registrada!")
-    
-    # Requisição ao back-end para receber a Primeira Pergunta Obrigatória
-    url = "http://localhost:5000/get_job_messages/4"
-    response = make_request(url)
-    mandatoryQuestion1 = response['jobmessages']
-    print(f"{mandatoryQuestion1}")
-    MandatoryAnswer1 = input()
-    print("Resposta Registrada!")
-
-    # Requisição ao back-end para receber a Segunda Pergunta Obrigatória
-    url = "http://localhost:5000/get_job_messages/5"
-    response = make_request(url)
-    mandatoryQuestion2 = response['jobmessages']
-    print(f"{mandatoryQuestion2}")
-    MandatoryAnswer2 = input()
-    print("Resposta Registrada!")
-
-    # Requisição ao back-end para receber a Terceira Pergunta Obrigatória
-    url = "http://localhost:5000/get_job_messages/6"
-    response = make_request(url)
-    mandatoryQuestion3 = response['jobmessages']
-    print(f"{mandatoryQuestion3}")
-    MandatoryAnswer3 = input()
-    print("Resposta Registrada!")
-
-    # Requisição ao back-end para receber a Quarta Pergunta Obrigatória
-    url = "http://localhost:5000/get_job_messages/7"
-    response = make_request(url)
-    mandatoryQuestion4 = response['jobmessages']
-    print(f"{mandatoryQuestion4}")
-    MandatoryAnswer4 = input()
-    print("Resposta Registrada!")
-
-    # Requisição da Confirmação da Vaga
-    print("Confirmar aplicação da vaga ? SIM OU NÃO")
-    answer = input()
-    if answer.upper() != "SIM" and answer.upper() !="NÃO":
-        print("Você não está escrevendo corretamente! Você tem mais 2 tentativas.")
-        for _ in range(2):
-            answer = input()
-            if answer.upper() != "SIM" and answer.upper() !="NÃO":
-                print("Digite Corretamente. Você tem mais", 1 - _, "tentativa(s).")
-            elif answer.upper() == "NÃO":
-                print("Confirmada sua desistência da vaga.")
-                return
-            else:
-                print("Agora vocÊ digitou corretamente!")
-                break
-        else:
-            print("Você excedeu o número máximo de tentativas. O chatbot será encerrado.")
-            return
-    elif answer.upper() == "NÃO":
-        print("Confirmada sua desistência da vaga.")
-        return
-    else:
-        pass
 
     if validate_answer(answer):
         print("Preencher formulário GUPY")
@@ -192,13 +107,13 @@ def chatbot_flow():
 
         resposta = {
             'Cargo': job_value ,
-            EliminationQuestion1: EliminatoryAnswer1.upper(),
-            EliminationQuestion2: EliminatoryAnswer2.upper(),
-            EliminationQuestion3: EliminatoryAnswer3.upper(),
-            mandatoryQuestion1: MandatoryAnswer1.upper(),
-            mandatoryQuestion1: MandatoryAnswer2.upper(),
-            mandatoryQuestion3: MandatoryAnswer3.upper(),
-            mandatoryQuestion4: MandatoryAnswer4.upper(),
+            elimination_questions[0]: elimination_answers[0],
+            elimination_questions[1]: elimination_answers[1],
+            elimination_questions[2]: elimination_answers[2],
+            mandatory_questions[0]: mandatory_answers[0],
+            mandatory_questions[1]: mandatory_answers[1],
+            mandatory_questions[2]: mandatory_answers[2],
+            mandatory_questions[3]: mandatory_answers[3],
             'Você quer candidatar-se a vaga ?': answer.upper()
         }
 
